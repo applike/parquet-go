@@ -2,8 +2,8 @@ package schema
 
 import (
 	"errors"
-	"reflect"
 	"fmt"
+	"reflect"
 
 	"github.com/xitongsys/parquet-go/common"
 	"github.com/xitongsys/parquet-go/parquet"
@@ -132,7 +132,6 @@ func (self *SchemaHandler) GetRepetitionLevelIndex(path []string, rl int32) (int
 	}
 	return res, fmt.Errorf("rl = %d not found in path = %v", rl, path)
 }
-
 
 // MaxRepetitionLevel returns the max repetition level type of a column by it's schema path
 func (self *SchemaHandler) MaxRepetitionLevel(path []string) (int32, error) {
@@ -353,7 +352,7 @@ func NewSchemaHandlerFromStruct(obj interface{}) (sh *SchemaHandler, err error) 
 			infos = append(infos, newInfo)
 
 			schema = parquet.NewSchemaElement()
-			schema.Name = "Key_value"
+			schema.Name = "Map"
 			rt2 := parquet.FieldRepetitionType_REPEATED
 			schema.RepetitionType = &rt2
 			var numField2 int32 = 2
@@ -363,7 +362,7 @@ func NewSchemaHandlerFromStruct(obj interface{}) (sh *SchemaHandler, err error) 
 			schemaElements = append(schemaElements, schema)
 			newInfo = common.NewTag()
 			common.DeepCopy(item.Info, newInfo)
-			newInfo.InName, newInfo.ExName = "Key_value", "key_value"
+			newInfo.InName, newInfo.ExName = "Map", "map"
 			infos = append(infos, newInfo)
 
 			newItem := NewItem()
@@ -410,7 +409,7 @@ func NewSchemaHandlerFromSchemaList(schemas []*parquet.SchemaElement) *SchemaHan
 	schemaHandler.Infos = make([]*common.Tag, len(schemas))
 	for i := 0; i < len(schemas); i++ {
 		name := schemas[i].GetName()
-		InName, ExName := common.HeadToUpper(name),  name
+		InName, ExName := common.HeadToUpper(name), name
 		schemaHandler.Infos[i] = &common.Tag{
 			InName: InName,
 			ExName: ExName,

@@ -1,9 +1,11 @@
 package types
 
 import (
+	"encoding/binary"
 	"fmt"
 	"math/big"
 	"reflect"
+	"time"
 
 	"github.com/xitongsys/parquet-go/parquet"
 )
@@ -70,32 +72,32 @@ func TypeNameToParquetType(name string, baseName string) (*parquet.Type, *parque
 }
 
 func ParquetTypeToGoReflectType(pT *parquet.Type, rT *parquet.FieldRepetitionType) reflect.Type {
-	if rT==nil || *rT != parquet.FieldRepetitionType_OPTIONAL {
+	if rT == nil || *rT != parquet.FieldRepetitionType_OPTIONAL {
 		if *pT == parquet.Type_BOOLEAN {
 			return reflect.TypeOf(true)
 
-		}else if *pT == parquet.Type_INT32 {
+		} else if *pT == parquet.Type_INT32 {
 			return reflect.TypeOf(int32(0))
 
-		}else if *pT == parquet.Type_INT64 {
+		} else if *pT == parquet.Type_INT64 {
 			return reflect.TypeOf(int64(0))
 
-		}else if *pT == parquet.Type_INT96 {
+		} else if *pT == parquet.Type_INT96 {
 			return reflect.TypeOf("")
 
-		}else if *pT == parquet.Type_FLOAT {
+		} else if *pT == parquet.Type_FLOAT {
 			return reflect.TypeOf(float32(0))
 
-		}else if *pT == parquet.Type_DOUBLE {
+		} else if *pT == parquet.Type_DOUBLE {
 			return reflect.TypeOf(float64(0))
 
-		}else if *pT == parquet.Type_BYTE_ARRAY {
+		} else if *pT == parquet.Type_BYTE_ARRAY {
 			return reflect.TypeOf("")
 
-		}else if *pT == parquet.Type_FIXED_LEN_BYTE_ARRAY {
+		} else if *pT == parquet.Type_FIXED_LEN_BYTE_ARRAY {
 			return reflect.TypeOf("")
 
-		}else {
+		} else {
 			return nil
 		}
 
@@ -104,35 +106,35 @@ func ParquetTypeToGoReflectType(pT *parquet.Type, rT *parquet.FieldRepetitionTyp
 			v := true
 			return reflect.TypeOf(&v)
 
-		}else if *pT == parquet.Type_INT32 {
+		} else if *pT == parquet.Type_INT32 {
 			v := int32(0)
 			return reflect.TypeOf(&v)
 
-		}else if *pT == parquet.Type_INT64 {
+		} else if *pT == parquet.Type_INT64 {
 			v := int64(0)
 			return reflect.TypeOf(&v)
 
-		}else if *pT == parquet.Type_INT96 {
+		} else if *pT == parquet.Type_INT96 {
 			v := ""
 			return reflect.TypeOf(&v)
 
-		}else if *pT == parquet.Type_FLOAT {
+		} else if *pT == parquet.Type_FLOAT {
 			v := float32(0)
 			return reflect.TypeOf(&v)
 
-		}else if *pT == parquet.Type_DOUBLE {
+		} else if *pT == parquet.Type_DOUBLE {
 			v := float64(0)
 			return reflect.TypeOf(&v)
 
-		}else if *pT == parquet.Type_BYTE_ARRAY {
+		} else if *pT == parquet.Type_BYTE_ARRAY {
 			v := ""
 			return reflect.TypeOf(&v)
 
-		}else if *pT == parquet.Type_FIXED_LEN_BYTE_ARRAY {
+		} else if *pT == parquet.Type_FIXED_LEN_BYTE_ARRAY {
 			v := ""
 			return reflect.TypeOf(&v)
 
-		}else {
+		} else {
 			return nil
 		}
 	}
@@ -154,6 +156,8 @@ func ParquetTypeToGoType(src interface{}, pT *parquet.Type, cT *parquet.Converte
 		return uint32(src.(int32))
 	} else if *cT == parquet.ConvertedType_UINT_64 {
 		return uint64(src.(int64))
+	} else if *cT == parquet.ConvertedType_TIMESTAMP_MILLIS {
+		return Int96ToTime(src).Unix()
 	} else {
 		return src
 	}
@@ -350,4 +354,27 @@ func JSONTypeToParquetType(val reflect.Value, pT *parquet.Type, cT *parquet.Conv
 	}
 	s := fmt.Sprintf("%v", val)
 	return StrToParquetType(s, pT, cT, length, scale)
+}
+
+func Int96ToTime(val interface{}) *time.Time {
+	parquetDate := []byte(val.(string))
+
+	nano := binary.LittleEndian.Uint64(parquetDate[:8])
+	dt := binary.LittleEndian.Uint32(parquetDate[8:])
+
+	l := dt + 68569
+	n := 4 * l / 146097
+	l = l - (146097*n+3)/4
+	i := 4000 * (l + 1) / 1461001
+	l = l - 1461*i/4 + 31
+	j := 80 * l / 2447
+	k := l - 2447*j/80
+	l = j / 11
+	j = j + 2 - 12*l
+	i = 100*(n-49) + i + l
+
+	tm := time.Date(int(i), time.Month(j), int(k), 0, 0, 0, 0, time.UTC)
+	tm = tm.Add(time.Duration(nano))
+
+	return &tm
 }
